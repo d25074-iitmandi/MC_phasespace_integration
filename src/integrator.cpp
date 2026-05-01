@@ -7,7 +7,7 @@
 Result monte_carlo_serial(int N, double s) {
     RNG rng(42);
 
-    double sum_w = 0.0, sum_w2 = 0.0;
+    double sum_w = 0.0, sum_w2 = 0.0; //Weights
 
     for (int i = 0; i < N; i++) {
         double costh = 2.0 * rng.uniform() - 1.0;
