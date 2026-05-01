@@ -1,7 +1,7 @@
 CXX = g++
 CXXFLAGS = -O3 -fopenmp -std=c++17 -Iinclude
 
-SRC = $(wildcard *.cpp)
+SRC = $(wildcard src/*.cpp)
 OBJ = $(SRC:.cpp=.o)
 
 TARGET = mc
