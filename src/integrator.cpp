@@ -12,7 +12,9 @@ Result monte_carlo_serial(int N, double s_sqrt) {
     for (int i = 0; i < N; i++) {
         double costh = 2.0 * rng.uniform() - 1.0;
         double M2 = matrix_element(costh, s_sqrt);
-        double w = M2 / (32.0 * M_PI * M_PI * s_sqrt*s_sqrt);
+        double mu_mass = 0.1056;
+        double beta = sqrt(1.0 - 4.0 * pow(mu_mass, 2) / (s_sqrt * s_sqrt));
+        double w = beta * M2 / (32.0 * M_PI * M_PI * s_sqrt*s_sqrt);
 
         sum_w += w;
         sum_w2 += w * w;
