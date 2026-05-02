@@ -6,31 +6,47 @@ import matplotlib.cm as cm
 import pandas as pd
 
 # ── Load data ────────────────────────────────────────────────────────────────
-df   = pd.read_csv("results/performance.csv")
-conv = pd.read_csv("results/convergence.csv")
+# convergence.csv has no header (it's commented out in utils.cpp)
+# columns written: logN, N, sigma_mc, sigma_analytic, mc_stat_error
+conv = pd.read_csv(
+    "results/convergence.csv",
+    names=["logN", "N", "sigma_mc", "sigma_analytic", "mc_stat_error"]
+)
 
-all_logN   = sorted(df["logN"].unique())
-all_N      = sorted(df["N"].unique())
+# Derive missing columns from what utils.cpp wrote
+conv["abs_diff"]     = (conv["sigma_mc"] - conv["sigma_analytic"]).abs()
+conv["rel_diff_pct"] = conv["abs_diff"] / conv["sigma_analytic"] * 100.0
+
+# performance.csv is written inline in main.cpp and has a proper header
+df = pd.read_csv("results/performance.csv")
+
+# serial_time is not in convergence.csv — pull it from performance.csv
+# where threads==1, one row per logN
+serial_times = (
+    df[df["threads"] == 1]
+    .set_index("logN")["time"]
+)
+conv["serial_time"] = conv["logN"].map(serial_times)
+
+all_logN          = sorted(df["logN"].unique())
+all_N             = sorted(df["N"].unique())
 threads_available = sorted(df["threads"].unique())
 
-# Colour map — one colour per N value
 cmap   = cm.get_cmap("plasma", len(all_logN))
 colors = {logN: cmap(i) for i, logN in enumerate(all_logN)}
 
-# ── Helper: get subset for one N ─────────────────────────────────────────────
 def get_N_data(logN):
-    sub = df[df["logN"] == logN].sort_values("threads")
-    return sub
+    return df[df["logN"] == logN].sort_values("threads")
 
-# Amdahl fit per N
 def amdahl_fit(sub):
-    sp = sub["speedup"].values
-    th = sub["threads"].values.astype(float)
-    # f_s = (1/S - 1/p)/(1 - 1/p), skip thread=1
+    sp   = sub["speedup"].values
+    th   = sub["threads"].values.astype(float)
     mask = th > 1
     if mask.sum() == 0:
         return np.nan
-    fs = np.mean((1.0/sp[mask] - 1.0/th[mask]) / (1.0 - 1.0/th[mask]))
+    fs = np.mean(
+        (1.0/sp[mask] - 1.0/th[mask]) / (1.0 - 1.0/th[mask])
+    )
     return fs
 
 # ── Layout ───────────────────────────────────────────────────────────────────
