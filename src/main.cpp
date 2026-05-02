@@ -4,10 +4,11 @@
 #include "physics.hpp"
 #include "utils.hpp"
 #include <cmath>
-#include "validation.hpp"
+#include "asymmetry.hpp"
+
 int main() {
     //const int N = 1e8;
-    const double sqrt_s = 3.2;
+    const double sqrt_s = 0.22;
     const double s = sqrt_s * sqrt_s;
     double analytic = analytic_cross_section(sqrt_s);\
     double prev_error = 0.0;
@@ -35,7 +36,7 @@ int main() {
     std::cout << "Time           = " << serial_time         << " s\n\n";
 
     prev_error = serial.error;
-    save_convergence_results(logN, serial.sigma, analytic, ratio, serial.error );
+    save_convergence_results(logN, N, serial.sigma, analytic, serial.error);
 
     // OpenMP Implementation
     std::cout<< "\n=======OpenMp Implementation begins=======\n";
@@ -56,15 +57,23 @@ int main() {
 
     
 }
-// --- In main(), after your convergence test ---
 
-std::cout << "\n=== Validation: N=1e6, sqrt_s=" << sqrt_s << " GeV ===\n";
 
-const int N_val  = 1e6;
-const int N_BINS = 20;
+std::cout << "\n=================================================\n";
+std::cout << "   SECTION: Forward-Backward Asymmetry Check\n";
+std::cout << "=================================================\n";
 
-auto bins    = angular_distribution(N_val, sqrt_s, N_BINS);
-auto chi2res = chi_square_test(bins);
-print_angular_report(bins, chi2res);
+// 1. Detailed single-energy check at your primary working point
+HemisphereResult afb = forward_backward_asymmetry(1000000, sqrt_s);
+print_asymmetry_report(afb, sqrt_s);
+
+// 2. Scan across energies — use the same grid as the energy scan
+//    A_FB must be zero at every single energy point
+std::vector<double> scan_energies = {
+    0.215, 0.230, 0.250, 0.300, 0.500,
+    1.0,   2.0,   3.2,   5.0,  10.0
+};
+auto afb_scan = asymmetry_energy_scan(200000, scan_energies);
+print_asymmetry_scan_report(afb_scan);
     return 0;
 }
