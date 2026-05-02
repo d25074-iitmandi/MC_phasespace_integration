@@ -5,6 +5,7 @@
 #include "utils.hpp"
 #include <cmath>
 #include "asymmetry.hpp"
+#include <fstream>
 
 int main() {
     //const int N = 1e8;
@@ -12,6 +13,9 @@ int main() {
     const double s = sqrt_s * sqrt_s;
     double analytic = analytic_cross_section(sqrt_s);\
     double prev_error = 0.0;
+    //Performance Analysis
+    std::ofstream perf_file("results/performance.csv");
+    perf_file << "logN,N,threads,time,speedup,efficiency,sigma,error\n";
     // Serial implementation
     for (int logN =3; logN <= 7; logN++){
     auto t1 = std::chrono::high_resolution_clock::now();
@@ -25,35 +29,56 @@ int main() {
     double rel_err = abs_err/analytic;
     double ratio    = (logN > 3) ? prev_error / serial.error : 0.0; // should → sqrt(10) ≈ 3.162
 
-    std::cout<<"\n=============Serial Implementation begins=============\n";
-    std::cout<< "For N= 10^"<< logN <<"\n";     
-    std::cout << "Sigma_MC: " << serial.sigma << " GeV^-2\n";
-    std::cout << "Analytic: " << analytic << " GeV^-2\n";
-    std::cout << "Absolute Error: " << abs_err << " GeV^-2\n";
-    std::cout << "MC Error "<< serial.error <<"\n";
-    std::cout << "Relative error = " << rel_err * 100.0 << " %\n";
-    std::cout << "Error ratio    = " << ratio           << "\n";
-    std::cout << "Time           = " << serial_time         << " s\n\n";
+std::cout << "\n=== Serial  N=10^" << logN << " ===\n";
+        std::cout << "Sigma_MC : " << serial.sigma  << " GeV^-2\n";
+        std::cout << "Analytic : " << analytic       << " GeV^-2\n";
+        std::cout << "Abs err  : " << abs_err        << " GeV^-2\n";
+        std::cout << "MC error : " << serial.error   << "\n";
+        std::cout << "Rel err  : " << rel_err        << " %\n";
+        std::cout << "Ratio    : " << ratio          << "  (expect 3.162)\n";
+        std::cout << "Time     : " << serial_time    << " s\n";
 
-    prev_error = serial.error;
+
+    // Serial counts as thread=1 in perf file
+        perf_file << logN        << ","
+                  << N           << ","
+                  << 1           << ","
+                  << serial_time << ","
+                  << 1.0         << ","   // speedup = 1 for serial
+                  << 100.0       << ","   // efficiency = 100%
+                  << serial.sigma << ","
+                  << serial.error << "\n";
     save_convergence_results(logN, N, serial.sigma, analytic, serial.error);
 
     // OpenMP Implementation
-    std::cout<< "\n=======OpenMp Implementation begins=======\n";
-    for (int t = 1; t <= 8; t *= 2) {
-        auto start = std::chrono::high_resolution_clock::now();
-        Result res = monte_carlo_openmp(N, sqrt_s, t);
-        auto end = std::chrono::high_resolution_clock::now();
+     std::cout << "\n--- OpenMP  N=10^" << logN << " ---\n";
+        for (int t = 2; t <= 8; t *= 2) {
+            auto start = std::chrono::high_resolution_clock::now();
+            Result res  = monte_carlo_openmp(N, sqrt_s, t);
+            auto end    = std::chrono::high_resolution_clock::now();
+            double time_omp = std::chrono::duration<double>(end - start).count();
 
-        double time = std::chrono::duration<double>(end - start).count();
-        double speedup = serial_time / time;      
-       
-        std::cout << "Threads: " << t
-                  << " Time: " << time
-                  << " Speedup: " << speedup << "\n";
+            double speedup    = serial_time / time_omp;
+            double efficiency = speedup / t * 100.0;
 
-        save_results(t, time, speedup);
-    }
+            std::cout << "Threads: " << t
+                      << "  Time: "      << time_omp
+                      << "  Speedup: "   << speedup
+                      << "  Efficiency: "<< efficiency << "%\n";
+
+            perf_file << logN        << ","
+                      << N           << ","
+                      << t           << ","
+                      << time_omp    << ","
+                      << speedup     << ","
+                      << efficiency  << ","
+                      << res.sigma   << ","
+                      << res.error   << "\n";
+        }
+
+        prev_error = serial.error;
+    
+    
 
     
 }
